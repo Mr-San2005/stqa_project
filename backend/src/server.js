@@ -4,6 +4,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 const examRoutes = require("./routes/examRoutes");
 const questionRoutes = require("./routes/questionRoutes");
+const submissionRoutes = require("./routes/submissionRoutes");
 
 const app = express();
 
@@ -11,6 +12,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/api/exams", examRoutes);
 app.use("/api/questions", questionRoutes);
+app.use("/api/submissions", submissionRoutes);
 
 // Health check route — confirms server is alive
 app.get("/api/health", (req, res) => {
