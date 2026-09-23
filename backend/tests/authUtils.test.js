@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 const { hashPassword, comparePassword, generateToken } = require("../src/utils/authUtils");
 const jwt = require("jsonwebtoken");
 
