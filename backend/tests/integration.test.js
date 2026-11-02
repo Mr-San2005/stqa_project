@@ -113,6 +113,7 @@ describe("IT-04: Auth ↔ Exam listing — student sees available exams", () => 
     expect(res.statusCode).toBe(200);
     const ids = res.body.exams.map((e) => e._id);
     expect(ids).toContain(createdExamId);
+    expect(res.body.exams.find((exam) => exam._id === createdExamId).hasSubmitted).toBe(false);
   });
 });
 
@@ -138,6 +139,33 @@ describe("IT-06: Submission ↔ DB — stored result is retrievable", () => {
       .set("Authorization", `Bearer ${studentToken}`);
     expect(res.statusCode).toBe(200);
     expect(res.body.submission.score).toBe(10);
+  });
+
+  test("student exam list marks a completed exam so it cannot be retaken", async () => {
+    const res = await request(app).get("/api/exams")
+      .set("Authorization", `Bearer ${studentToken}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.exams.find((exam) => exam._id === createdExamId).hasSubmitted).toBe(true);
+  });
+
+  test("admin can view student scores for an exam", async () => {
+    const res = await request(app).get(`/api/submissions/exam/${createdExamId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.submissions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        score: 10,
+        totalMarks: 10,
+        student: expect.objectContaining({ name: STUDENT.name }),
+      }),
+    ]));
+  });
+
+  test("completion status belongs to the signed-in user", async () => {
+    const res = await request(app).get("/api/exams")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.exams.find((exam) => exam._id === createdExamId).hasSubmitted).toBe(false);
   });
 });
 

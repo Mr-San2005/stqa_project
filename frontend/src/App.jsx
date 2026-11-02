@@ -346,6 +346,8 @@ function ExamAttempt({ exam, token, onBack, onSubmitted, onError }) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const answeredCount = Object.keys(answers).length
+  const unansweredCount = questions.length - answeredCount
 
   useEffect(() => {
     let active = true
@@ -399,6 +401,10 @@ function ExamAttempt({ exam, token, onBack, onSubmitted, onError }) {
         error && questions.length === 0 ? <p className="notice error" role="alert">{error}</p> :
           questions.length === 0 ? <p className="muted">This exam does not have any questions yet.</p> : (
             <form onSubmit={submit}>
+              <p className="attempt-progress" role="status">
+                Answered <strong>{answeredCount}</strong> of <strong>{questions.length}</strong> questions
+                {unansweredCount > 0 && ` · ${unansweredCount} unanswered`}
+              </p>
               {questions.map((question, index) => (
                 <fieldset className="question-card" key={question._id}>
                   <legend>{index + 1}. {question.questionText} <span className="muted">({question.marks} {question.marks === 1 ? 'mark' : 'marks'})</span></legend>
@@ -417,6 +423,9 @@ function ExamAttempt({ exam, token, onBack, onSubmitted, onError }) {
                 </fieldset>
               ))}
               {error && <p className="notice error" role="alert">{error}</p>}
+              {unansweredCount > 0 && (
+                <p className="attempt-hint">You can submit now, but unanswered questions will receive no marks.</p>
+              )}
               <button className="button primary" type="submit" disabled={busy}>
                 {busy ? 'Submitting…' : 'Submit exam'}
               </button>
@@ -448,6 +457,9 @@ function Dashboard({ session, onLogout }) {
   const [attemptingExam, setAttemptingExam] = useState(null)
   const [result, setResult] = useState(null)
   const [resultExam, setResultExam] = useState(null)
+  const [adminResults, setAdminResults] = useState(null)
+  const [adminResultsExam, setAdminResultsExam] = useState(null)
+  const [loadingResults, setLoadingResults] = useState(false)
 
   const handleApiError = useCallback((requestError) => {
     if (requestError.status === 401) {
@@ -488,6 +500,22 @@ function Dashboard({ session, onLogout }) {
     }
   }
 
+  async function viewExamResults(exam) {
+    setError('')
+    setAdminResults(null)
+    setAdminResultsExam(exam)
+    setLoadingResults(true)
+    try {
+      const data = await apiRequest(`/submissions/exam/${exam._id}`, { token })
+      setAdminResults(data.submissions)
+    } catch (requestError) {
+      setAdminResultsExam(null)
+      handleApiError(requestError)
+    } finally {
+      setLoadingResults(false)
+    }
+  }
+
   if (attemptingExam) {
     return (
       <main className="app-shell">
@@ -499,6 +527,9 @@ function Dashboard({ session, onLogout }) {
           onSubmitted={(submission) => {
             setResult(submission)
             setResultExam(attemptingExam)
+            setExams((currentExams) => currentExams.map((exam) =>
+              exam._id === attemptingExam._id ? { ...exam, hasSubmitted: true } : exam
+            ))
             setAttemptingExam(null)
           }}
           onError={handleApiError}
@@ -528,6 +559,45 @@ function Dashboard({ session, onLogout }) {
         <AdminTools token={token} exams={exams} onExamCreated={handleExamCreated} onError={handleApiError} />
       )}
 
+      {user.role === 'admin' && adminResultsExam && (
+        <section className="panel results-panel" aria-live="polite">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">STUDENT SCORES</p>
+              <h2>{adminResultsExam.title}</h2>
+            </div>
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => { setAdminResultsExam(null); setAdminResults(null) }}
+            >
+              Close
+            </button>
+          </div>
+          {loadingResults ? <p className="muted">Loading results…</p> : adminResults?.length ? (
+            <div className="results-table-wrap">
+              <table className="results-table">
+                <thead>
+                  <tr><th>Student</th><th>Score</th><th>Submitted</th></tr>
+                </thead>
+                <tbody>
+                  {adminResults.map((submission) => (
+                    <tr key={submission._id}>
+                      <td>
+                        <strong>{submission.student?.name || 'Unknown student'}</strong>
+                        {submission.student?.email && <span className="result-email">{submission.student.email}</span>}
+                      </td>
+                      <td>{submission.score} / {submission.totalMarks}</td>
+                      <td>{new Date(submission.submittedAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p className="muted">No students have submitted this exam yet.</p>}
+        </section>
+      )}
+
       <section className="exam-section">
         <div className="section-heading">
           <div>
@@ -552,16 +622,28 @@ function Dashboard({ session, onLogout }) {
                   <span>{exam.durationMinutes} min</span>
                   <span>{exam.totalMarks} marks</span>
                 </div>
+                {user.role === 'student' && (
+                  <p className={`exam-status ${exam.hasSubmitted ? 'completed' : ''}`}>
+                    {exam.hasSubmitted ? 'Completed' : 'Not attempted'}
+                  </p>
+                )}
                 <div className="exam-actions">
                   {user.role === 'student' && (
                     <>
-                      <button className="button primary" type="button" onClick={() => { setError(''); setAttemptingExam(exam) }}>
-                        Take exam
-                      </button>
-                      <button className="text-button" type="button" onClick={() => viewResult(exam)}>View result</button>
+                      {exam.hasSubmitted ? (
+                        <button className="button secondary" type="button" onClick={() => viewResult(exam)}>View result</button>
+                      ) : (
+                        <button className="button primary" type="button" onClick={() => { setError(''); setAttemptingExam(exam) }}>
+                          Take exam
+                        </button>
+                      )}
                     </>
                   )}
-                  {user.role === 'admin' && <p className="muted">Manage questions above.</p>}
+                  {user.role === 'admin' && (
+                    <button className="text-button" type="button" onClick={() => viewExamResults(exam)}>
+                      View results
+                    </button>
+                  )}
                 </div>
               </article>
             ))}

@@ -1,4 +1,5 @@
 const Exam = require("../models/Exam");
+const Submission = require("../models/Submission");
 
 // Validation constants — upper bounds defined here for BVA testing
 const DURATION_MIN = 1;
@@ -44,8 +45,16 @@ async function createExam(req, res) {
 // FR-18 / FR-03: list all exams
 async function getExams(req, res) {
   try {
-    const exams = await Exam.find().select("title durationMinutes totalMarks createdAt");
-    res.json({ exams });
+    const [exams, submittedExamIds] = await Promise.all([
+      Exam.find().select("title durationMinutes totalMarks createdAt"),
+      Submission.distinct("exam", { student: req.user.id }),
+    ]);
+    const submittedExamIdSet = new Set(submittedExamIds.map(String));
+    const examsWithStatus = exams.map((exam) => ({
+      ...exam.toObject(),
+      hasSubmitted: submittedExamIdSet.has(String(exam._id)),
+    }));
+    res.json({ exams: examsWithStatus });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

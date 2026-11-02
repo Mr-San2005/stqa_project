@@ -40,9 +40,10 @@ to `admin` in the MongoDB `users` collection using MongoDB Compass, then sign
 out and sign in again so the new session receives the admin role.
 
 Students can browse available exams, answer multiple-choice questions, submit
-their answers, and view their results. Admins can create exams and add
-four-option questions from the dashboard. Protected API requests use the
-signed-in user's bearer token.
+their answers, see their answer progress, and view a result after submission.
+Submitted exams are marked complete and cannot be started again. Admins can
+create exams, add four-option questions, and review student scores from the
+dashboard. Protected API requests use the signed-in user's bearer token.
 
 ## Demo data and tests
 
