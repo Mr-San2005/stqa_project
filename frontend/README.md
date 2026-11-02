@@ -63,10 +63,11 @@ cd E:\STQA\backend
 npm run test:all
 ```
 
-GitHub Actions runs the backend unit tests and frontend checks on each push and
-pull request. The unit tests do not require MongoDB; database integration,
-black-box, and age-boundary tests remain available through `npm run test:all`
-and the focused test scripts. Every push updates
+GitHub Actions runs only the backend unit tests on each push and pull request.
+These unit tests do not require MongoDB; database integration, black-box, and
+age-boundary tests remain available through `npm run test:all` and the focused
+test scripts. Run the frontend lint and build commands locally as described in
+the Checks section. Every push updates
 [`reports/latest-test-report.md`](../reports/latest-test-report.md) in the
 repository and uploads the Jest JSON report as a workflow artifact, including
 when tests fail.
