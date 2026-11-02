@@ -14,7 +14,7 @@
     "test:age": "jest tests/ageField.test.js --verbose --testTimeout=30000",
     "test:selenium": "node tests/selenium/login.test.js",
     "test:all": "jest --verbose --testTimeout=30000 --testPathIgnorePatterns=selenium",
-    "test:ci": "node -e \"require('fs').mkdirSync('test-results', { recursive: true })\" && jest --ci --maxWorkers=2 --verbose --testTimeout=30000 --testPathIgnorePatterns=selenium --json --outputFile=test-results/jest-report.json",
+    "test:ci": "node -e \"require('fs').mkdirSync('test-results', { recursive: true })\" && jest --ci --runInBand --verbose --testTimeout=30000 --testPathIgnorePatterns=selenium --json --outputFile=test-results/jest-report.json",
     "seed:demo": "node src/scripts/seedDemoData.js",
     "clean:test-data": "node src/scripts/cleanBvaTestData.js"
   },
