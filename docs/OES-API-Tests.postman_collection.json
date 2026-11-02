@@ -1,0 +1,303 @@
+{
+  "info": {
+    "name": "OES-API-Tests",
+    "_postman_id": "oes-api-collection-v1",
+    "description": "API test collection for Online Examination System — BIS702 Lab 9.\nCovers all REST endpoints: Auth, Exams, Questions, Submissions.\nImport this file into Postman, set the {{base_url}} variable to http://localhost:5000/api,\nthen run the collection in order using the Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000/api" },
+    { "key": "admin_token", "value": "" },
+    { "key": "student_token", "value": "" },
+    { "key": "exam_id", "value": "" },
+    { "key": "question_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "API-01 Register Student",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Postman Student\",\"email\":\"pm_student@example.com\",\"password\":\"TestPass1\",\"age\":22}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-01: Register returns 201', () => pm.response.to.have.status(201));",
+              "pm.test('API-01: Response has user object', () => pm.expect(pm.response.json()).to.have.property('user'));"
+            ]}
+          }]
+        },
+        {
+          "name": "API-02 Login Admin",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"bbtest@example.com\",\"password\":\"ValidPass123\"}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-02: Admin login returns 200', () => pm.response.to.have.status(200));",
+              "pm.test('API-02: Token present', () => pm.expect(pm.response.json()).to.have.property('token'));",
+              "const token = pm.response.json().token; if(token) pm.collectionVariables.set('admin_token', token);"
+            ]}
+          }]
+        },
+        {
+          "name": "API-03 Login Student",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"pm_student@example.com\",\"password\":\"TestPass1\"}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-03: Student login returns 200', () => pm.response.to.have.status(200));",
+              "const token = pm.response.json().token; if(token) pm.collectionVariables.set('student_token', token);"
+            ]}
+          }]
+        },
+        {
+          "name": "API-04 Login Wrong Password",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"bbtest@example.com\",\"password\":\"WrongPass\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-04: Wrong password returns 401', () => pm.response.to.have.status(401));",
+              "pm.test('API-04: Message is Invalid credentials', () => pm.expect(pm.response.json().message).to.match(/invalid credentials/i));"
+            ]}
+          }]
+        },
+        {
+          "name": "API-05 Login Missing Fields",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-05: Missing fields returns 400', () => pm.response.to.have.status(400));"
+            ]}
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Exams",
+      "item": [
+        {
+          "name": "API-06 Create Exam (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/exams",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"title\":\"Postman Test Exam\",\"durationMinutes\":60,\"totalMarks\":20}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-06: Create exam returns 201', () => pm.response.to.have.status(201));",
+              "const id = pm.response.json().exam._id; if(id) pm.collectionVariables.set('exam_id', id);"
+            ]}
+          }]
+        },
+        {
+          "name": "API-07 Create Exam (Student — should fail)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/exams",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{student_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"title\":\"Forbidden\",\"durationMinutes\":30,\"totalMarks\":10}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-07: Student cannot create exam — 403', () => pm.response.to.have.status(403));"
+            ]}
+          }]
+        },
+        {
+          "name": "API-08 List Exams",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/exams",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-08: List exams returns 200', () => pm.response.to.have.status(200));",
+              "pm.test('API-08: Response has exams array', () => pm.expect(pm.response.json()).to.have.property('exams'));"
+            ]}
+          }]
+        },
+        {
+          "name": "API-09 Get Exam By ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/exams/{{exam_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-09: Get exam by ID returns 200', () => pm.response.to.have.status(200));",
+              "pm.test('API-09: Exam has title', () => pm.expect(pm.response.json().exam).to.have.property('title'));"
+            ]}
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Questions",
+      "item": [
+        {
+          "name": "API-10 Add Question (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/questions",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"exam\":\"{{exam_id}}\",\"questionText\":\"What is 2+2?\",\"options\":[\"3\",\"4\",\"5\",\"6\"],\"correctOptionIndex\":1,\"marks\":10}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-10: Add question returns 201', () => pm.response.to.have.status(201));",
+              "const id = pm.response.json().question._id; if(id) pm.collectionVariables.set('question_id', id);"
+            ]}
+          }]
+        },
+        {
+          "name": "API-11 Get Questions for Exam (Student)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/questions/exam/{{exam_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-11: Get questions returns 200', () => pm.response.to.have.status(200));",
+              "pm.test('API-11: correctOptionIndex NOT in response (stripped)', () => { const q = pm.response.json().questions[0]; pm.expect(q).to.not.have.property('correctOptionIndex'); });"
+            ]}
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Submissions",
+      "item": [
+        {
+          "name": "API-12 Submit Exam (Student)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/submissions",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{student_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"exam\":\"{{exam_id}}\",\"answers\":[{\"question\":\"{{question_id}}\",\"selectedOptionIndex\":1}]}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-12: Submit exam returns 201', () => pm.response.to.have.status(201));",
+              "pm.test('API-12: Score is calculated', () => pm.expect(pm.response.json().submission).to.have.property('score'));"
+            ]}
+          }]
+        },
+        {
+          "name": "API-13 Duplicate Submission (should fail)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/submissions",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{student_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"exam\":\"{{exam_id}}\",\"answers\":[{\"question\":\"{{question_id}}\",\"selectedOptionIndex\":1}]}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-13: Duplicate submission returns 409', () => pm.response.to.have.status(409));"
+            ]}
+          }]
+        },
+        {
+          "name": "API-14 Get My Result",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/submissions/my/{{exam_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-14: Get result returns 200', () => pm.response.to.have.status(200));",
+              "pm.test('API-14: Submission has score', () => pm.expect(pm.response.json().submission).to.have.property('score'));"
+            ]}
+          }]
+        },
+        {
+          "name": "API-15 Admin Views All Results",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/submissions/exam/{{exam_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('API-15: Admin gets all results — 200', () => pm.response.to.have.status(200));",
+              "pm.test('API-15: Submissions array present', () => pm.expect(pm.response.json()).to.have.property('submissions'));"
+            ]}
+          }]
+        }
+      ]
+    }
+  ]
+}

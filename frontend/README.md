@@ -1,16 +1,74 @@
-# React + Vite
+# Examspace frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React and Vite frontend for the Online Examination System.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Configure MongoDB and the backend environment in `backend/.env` (`MONGO_URI`,
+   `JWT_SECRET`, and optionally `PORT`). Keep that file private.
+2. In one terminal, start the API:
 
-## React Compiler
+   ```powershell
+   cd E:\STQA\backend
+   npm install
+   npm run dev
+   ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+3. In another terminal, start the frontend:
 
-## Expanding the Oxlint configuration
+   ```powershell
+   cd E:\STQA\frontend
+   npm install
+   npm run dev
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+4. Open the local address printed by Vite (normally
+   `http://localhost:5173`). The frontend expects the API at
+   `http://localhost:5000/api` by default. To use another API URL, set
+   `VITE_API_URL` before starting Vite, for example:
+
+   ```powershell
+   $env:VITE_API_URL = 'http://localhost:5000/api'
+   npm run dev
+   ```
+
+New accounts are registered as students and signed in automatically. Admin
+accounts must be provisioned by a trusted project administrator; do not expose
+an admin-role choice in public registration. For a local lab demo without an
+existing admin, register a normal account, update that account's `role` field
+to `admin` in the MongoDB `users` collection using MongoDB Compass, then sign
+out and sign in again so the new session receives the admin role.
+
+Students can browse available exams, answer multiple-choice questions, submit
+their answers, and view their results. Admins can create exams and add
+four-option questions from the dashboard. Protected API requests use the
+signed-in user's bearer token.
+
+## Demo data and tests
+
+After creating an admin account as described above, load two sample exams and
+their questions:
+
+```powershell
+cd E:\STQA\backend
+npm run seed:demo
+```
+
+The backend test suite creates and removes its own test records. Set
+`MONGO_URI` and `JWT_SECRET` in `backend/.env`, then run:
+
+```powershell
+cd E:\STQA\backend
+npm run test:all
+```
+
+GitHub Actions runs the backend tests and frontend checks on each push and pull
+request. The Jest JSON report is uploaded as the `backend-test-report` workflow
+artifact, including when tests fail.
+
+## Checks
+
+```powershell
+npm run lint
+npm run build
+```

@@ -4,10 +4,15 @@ const { hashPassword, comparePassword, generateToken } = require("../utils/authU
 // FR-01: register
 async function register(req, res) {
   try {
-    const { name, email, password, age, role } = req.body;
+    const { name, email, password, age } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email, and password are required" });
+    }
+
+    // DEF-002 fix: validate age range when provided
+    if (age !== undefined && (age < 18 || age > 60)) {
+      return res.status(400).json({ message: "Age must be between 18 and 60" });
     }
 
     const existingUser = await User.findOne({ email });
@@ -21,11 +26,12 @@ async function register(req, res) {
       email,
       password: hashedPassword,
       age,
-      role: role === "admin" ? "admin" : "student", // default safe to student
+      role: "student",
     });
 
     res.status(201).json({
       message: "User registered successfully",
+      token: generateToken(user),
       user: { id: user._id, name: user.name, email: user.email, role: user.role },
     });
   } catch (err) {
