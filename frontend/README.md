@@ -70,7 +70,8 @@ test scripts. Run the frontend lint and build commands locally as described in
 the Checks section. Every push updates
 [`reports/latest-test-report.md`](../reports/latest-test-report.md) in the
 repository and uploads the Jest JSON report as a workflow artifact, including
-when tests fail.
+when tests fail. The report also includes coverage for files exercised by the
+unit tests and appears in the Actions run summary.
 
 ## Checks
 
