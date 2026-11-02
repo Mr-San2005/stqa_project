@@ -63,9 +63,13 @@ cd E:\STQA\backend
 npm run test:all
 ```
 
-GitHub Actions runs the backend tests and frontend checks on each push and pull
-request. The Jest JSON report is uploaded as the `backend-test-report` workflow
-artifact, including when tests fail.
+GitHub Actions runs the backend unit tests and frontend checks on each push and
+pull request. The unit tests do not require MongoDB; database integration,
+black-box, and age-boundary tests remain available through `npm run test:all`
+and the focused test scripts. Every push updates
+[`reports/latest-test-report.md`](../reports/latest-test-report.md) in the
+repository and uploads the Jest JSON report as a workflow artifact, including
+when tests fail.
 
 ## Checks
 

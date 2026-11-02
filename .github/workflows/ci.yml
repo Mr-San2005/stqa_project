@@ -2,7 +2,11 @@ name: CI
 
 on:
   push:
+    paths-ignore:
+      - reports/latest-test-report.md
   pull_request:
+    paths-ignore:
+      - reports/latest-test-report.md
 
 permissions:
   contents: read
@@ -10,21 +14,12 @@ permissions:
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongo:7
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: backend
     env:
-      MONGO_URI: mongodb://127.0.0.1:27017/oes_test
       JWT_SECRET: ci-test-secret
     steps:
       - uses: actions/checkout@v4
@@ -34,20 +29,41 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
-      - name: Verify MongoDB connection
-        run: >-
-          node -e "const mongoose = require('mongoose');
-          mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 })
-          .then(() => mongoose.disconnect())
-          .catch((error) => { console.error(error); process.exit(1); })"
-      - run: npm run test:ci
-      - name: Upload Jest report
+      - name: Run backend unit tests
+        id: backend_tests
+        continue-on-error: true
+        run: npm run test:ci
+      - name: Create Markdown test report
+        if: always()
+        env:
+          TEST_OUTCOME: ${{ steps.backend_tests.outcome }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/writeTestReport.js
+      - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-test-report
-          path: backend/test-results/jest-report.json
-          if-no-files-found: warn
+          name: test-report
+          path: |
+            reports/latest-test-report.md
+            backend/test-results/jest-report.json
+          if-no-files-found: error
+      - name: Save report to repository
+        if: always() && github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ../reports/latest-test-report.md
+          if git diff --cached --quiet; then
+            echo "Test report is unchanged."
+          else
+            git commit -m "Update test report"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+      - name: Mark job failed if tests failed
+        if: steps.backend_tests.outcome == 'failure'
+        run: exit 1
 
   frontend-checks:
     runs-on: ubuntu-latest
